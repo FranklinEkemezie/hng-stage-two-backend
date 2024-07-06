@@ -1,0 +1,35 @@
+{
+  "auth/register": {
+    "controller": "User",
+    "action": "registerUser"
+  },
+  "auth/login": {
+    "controller": "User",
+    "action": "loginUser"
+  },
+  "api/users/:id": {
+    "controller": "User",
+    "action": "getUserRecord",
+    "authentication": true,
+    "params": {
+      "id": "string"
+    }
+  },
+  "api/organisations": {
+    "controller": "Organisation",
+    "action": "getUserOrganisations",
+    "authentication": true
+  },
+  "api/organisations/:orgId": {
+    "controller": "Organisation",
+    "action": "getOrganisationRecord",
+    "authentication": true,
+    "params": {
+      "orgId": "string"
+    }
+  },
+  "api/organisations/:orgId/users": {
+    "controller": "Organisation",
+    "action": "addUser"
+  }
+}
