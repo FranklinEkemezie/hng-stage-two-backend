@@ -131,7 +131,7 @@ class UserController extends BaseController {
 
       $this -> logger -> setLogFile(LOGFILE_DIR . 'user.log');
       $this -> logger -> error(
-        "An error occurred registering user: " .
+        "An error occurred regigstering user: " .
         $e -> getMessage() . " || Stack trace" .
         $e -> getTraceAsString()
       );
