@@ -12,7 +12,8 @@ class Organisation {
   public function __construct(
     private string $orgId, // unique
     private string $name, // creatorFirstName's organisation
-    private string $description=""
+    private string $description="",
+    private string $createdBy 
   ) {
 
   }
@@ -27,6 +28,10 @@ class Organisation {
 
   public function getDescription(): string {
     return $this -> description;
+  }
+
+  public function createdBy(): string {
+    return $this -> createdBy;
   }
 
 

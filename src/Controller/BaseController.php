@@ -24,9 +24,8 @@ class BaseController {
   {
     $this -> conn = $di -> get('db');
     $this -> logger = $di -> get('logger');
-    $this -> config = $di -> get('config');
+    // $this -> config = $di -> get('config');
   }
-
 
   /**
    * Prepares a response
@@ -90,7 +89,6 @@ class BaseController {
     );
   }
 
-
   protected static function getFormData(): array|null {
     return json_decode(file_get_contents('php://input'), TRUE);
   }
@@ -107,5 +105,9 @@ class BaseController {
       !is_array($data) ||
       count($data) === 0
     ;
+  }
+
+  protected static function sanitiseAndFilterFormData(array $formData): array {
+    return array_map(fn($value) => sanitiseAndFilterString($value), $formData);
   }
 }

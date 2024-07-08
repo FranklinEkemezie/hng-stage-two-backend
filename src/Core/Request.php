@@ -26,11 +26,11 @@ class Request {
   /* -------------------------
    * Class constants
    * ----------------------- */
-  private const GET = 'GET';
-  private const POST = 'POST';
-  private const PUT = 'PUT';
-  private const OPTIONS = 'OPTIONS';
-  private const DELETE = 'DELETE';
+  public const GET = 'GET';
+  public const POST = 'POST';
+  public const PUT = 'PUT';
+  public const OPTIONS = 'OPTIONS';
+  public const DELETE = 'DELETE';
 
   public const USER_LOGGED_IN = 'USR_JWT_042';
 
@@ -51,14 +51,18 @@ class Request {
     $this -> session = new FilteredMap($_SESSION);
   }
 
-  public static function decodeJWTToken($token, $secret_key): array {
+  public static function decodeJWTToken($token, $secret_key=NULL): array {
+    $secret_key = $secret_key ?? $_ENV['APP_AUTH_SECRET_KEY'];
+
     return (array) JWT::decode(
       $token,
       new Key($secret_key, 'HS256')
     );
   }
 
-  public function encodeJWTToken(array $data, string $secret_key, $expireAfter=NULL): string {
+  public static function encodeJWTToken(array $data, string $secret_key=NULL, $expireAfter=NULL): string {
+    $secret_key = $secret_key ?? $_ENV['APP_AUTH_SECRET_KEY'];
+
     $issuedAt = new \DateTimeImmutable();
     $expireAt = is_null($expireAfter) ?
       $issuedAt -> modify('+30 days') -> getTimestamp() :
@@ -68,7 +72,7 @@ class Request {
     $data = array_merge(
       array(
         'iat' => $issuedAt -> getTimestamp(),
-        'iss' => $this -> getDomainName(),
+        // 'iss' => $this -> getDomainName(),
         'nbf' => $issuedAt -> getTimestamp(),
         'exp' => $expireAt
       ),
@@ -76,6 +80,61 @@ class Request {
     );
 
     return JWT::encode($data, $secret_key, 'HS256');
+  }
+
+  /**
+   * Make HHTP Request using cURL
+   */
+  public static function makeHTTPRequest(string $url, string $method=Request::GET, string $body=NULL, array $requestHeaders=[], array $responseHeaders=[]): Response {
+    // Initiate the cURL handler
+    $ch = curl_init();
+
+    // Set the URL
+    curl_setopt($ch, CURLOPT_URL, $url);
+
+    // Set the HTTP method
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
+
+    // Set the request body is provided
+    if($body) {
+      curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+      
+      // Set the headers
+      $reqHeaders = array_merge(
+        [
+          'Content-Type' => Response::CONTENT_TYPE_JSON,
+          'Content-Length' => strlen($body)
+        ],
+        $requestHeaders
+      );
+      $headers = array_map(fn($headerKey) => "$headerKey: {$reqHeaders[$headerKey]}", $reqHeaders);
+
+      curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    }
+
+    // Return response not output
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+
+    // Execute the request and get the response
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    if(curl_errno($ch)) {
+      trigger_error(
+        "An error occurred while making cURL HTTP Request @ $url:=> Error Msg: " . curl_error($ch) . "Err no: " . curl_errno($ch)
+      );
+    }
+
+    // CLose the cURL session
+    curl_close($ch);
+
+    return new Response(
+      Response::HTTP_OK, $response,
+      array_merge(
+        ['Content-Type' => Response::CONTENT_TYPE_JSON],
+        $responseHeaders
+      )
+    );
   }
 
   /**

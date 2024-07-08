@@ -30,6 +30,9 @@
   },
   "api/organisations/:orgId/users": {
     "controller": "Organisation",
-    "action": "addUser"
+    "action": "addUser",
+    "params": {
+      "orgId": "string"
+    }
   }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Core;
 
+use App\Controller\BaseController;
+use App\Controller\ErrorController;
 use App\Exception\NotFoundException;
 use App\Utils\DependencyInjector;
 
@@ -16,6 +18,11 @@ class Router {
   private array $routeMap; // list of defined routes
 
   // Class Constants
+  public const CONTROLLER_NAMESPACE = "\\App\\Controller";
+  public const REGEX_PATTERNS = array(
+    "number" => "\d+",
+    "string" => "[a-zA-Z0-9-_]+",
+  );
   
 
   public function __construct(
@@ -39,14 +46,14 @@ class Router {
    * used to generate the regex pattern for the route
    * @return string The regex pattern for the route 
    */
-  private static function getRouteRegex(string $route, $info): string {
+  private static function getRouteRegex(string $route, array $info): string {
     // Split the route path
     $route_path_ = explode("/", $route);
     $route_regex_ = array();
 
     foreach($route_path_ as $path) {
       // Identify parameterized path
-      if(isset($path[0]) && $path[0] === ":") {
+      if(isset($path[0]) && !empty($path[0]) && $path[0] === ":") {
         $param = substr($path, 1);
         $data_type = $info["params"][$param];
         $data_type_regex = self::REGEX_PATTERNS[$data_type];
@@ -62,6 +69,64 @@ class Router {
     
     return "/^$route_regex$/";
   }
+
+  /**
+   * Gets the controller responsible for an action(method)
+   * 
+   */
+  private function getActionController($route, $request): BaseController {
+    $controllerName = $this -> routeMap[$route]['controller'] . "Controller";
+    $controllerName = self::CONTROLLER_NAMESPACE . "\\" . $controllerName;
+    $controller = new $controllerName($this -> di, $request);
+
+    return $controller;
+  }
+
+  /**
+   * Extract the parameters from the request path
+   * 
+   * @param string $route The route for matching and extracting the parameters
+   * @param string $path The request to extract the parameters from
+   * 
+   * @return array An associative array of the extracted parameters with the key as the variable name of the parameter
+   * and the corresponding value as the value of the parameter.
+   */
+  private static function extractParams(string $route, string $path): array {
+    $params = [];
+
+    $route_parts = explode("/", $route);
+    $path_parts = explode("/", $path);
+
+    foreach($route_parts as $index => $route_part) {
+      if(isset($route_part[0]) && $route_part[0] === ":") {
+        $params[substr($route_part, 1)] = $path_parts[$index];
+      }
+    }
+
+    return $params;
+  }
+
+  /**
+   * Executes the controller
+   * 
+   * @param string $route The route
+   * @param Request $request The request
+   * 
+   * @return Response The response
+   */
+  private function executeController($route, $request): Response {
+    $controller = self::getActionController($route, $request);
+    $controllerMethod = $this -> routeMap[$route]['action'];
+
+    $path = substr($request -> getPath(), 1);
+    $params = self::extractParams($route, $path);
+
+    return call_user_func(
+      [$controller, $controllerMethod],
+      ...$params
+    );
+  }
+
 
   /**
    * Routes request to the appropriate controller method and executes it
@@ -81,19 +146,43 @@ class Router {
 
     try {
       $pathRoute = substr($request -> getPath(), 1);
+
       foreach($this -> routeMap as $route => $routeInfo) {
         if(preg_match(self::getRouteRegex($route, $routeInfo), $pathRoute)) {
           // Check if authentication is required
           $authenticationRequired = isset($routeInfo['authentication']) && $routeInfo['authentication'];
           if($authenticationRequired && !$request -> isAuthenticated()) {
-            
+            return ErrorController::unauthorised(json_encode(
+              ['error' => 'User is not logged in']
+            ));
           }
+
+          // Execute the controller method
+          return $this -> executeController($route, $request);
         }
       }
+
+      return ErrorController::notFound();
     } catch(\Exception $e) {
+      // Log error to log file
+      $logger -> setLogFile(LOGFILE_DIR . 'default.log');
+      $logger -> error(
+        "Error occurred: " . 
+        $e -> getMessage() . " || Stack trace" .
+        $e -> getTraceAsString()
+      );
 
+      return ErrorController::internalServerError();
     } catch(\Error $e) {
+      // Log error to log file
+      $logger -> setLogFile(LOGFILE_DIR . 'default.log');
+      $logger -> error(
+        "Error occurred: " . 
+        $e -> getMessage() . " || Stack trace" .
+        $e -> getTraceAsString()
+      );
 
+      return ErrorController::internalServerError();
     }
 
 

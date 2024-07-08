@@ -1,0 +1,22 @@
+[
+  {
+    "firstName": "Emeka",
+    "lastName": "John",
+    "email": "emeka@john.com",
+    "password": "<emekaJohn24/>",
+    "userId": "4d078458-f178-4126-9fea-466a3e133c69"
+  },
+  {
+    "firstName": "Jane",
+    "lastName": "Bella",
+    "email": "bel@jane.com",
+    "password": "Jane#123",
+    "userId": "4090dbcc-a9b6-4c25-9f8c-f89e28143b41"
+  },
+  {
+    "firstName": "Obinna",
+    "lastName": "Mark",
+    "email": "helloworld@gmail.com",
+    "password": "HelloWorld"
+  }
+]
